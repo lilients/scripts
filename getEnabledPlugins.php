@@ -4,8 +4,8 @@
 * getEnabledPlugins.php
 * get the enabled plugins from all our OJS users right out of the database
 * @argv password string
-* @version 1.0
-* @date 2016-07-28
+* @version 1.1
+* @date 2016-08-01
 * @author Svantje Lilienthal, Center for Digital Systems
 */
 
@@ -16,12 +16,12 @@
 // variables for the database connection
 $host = 'localhost';
 $username = 'root';
+$password = '';
 
 // variables to be filles with data
 $pluginNames = array();
 $plugins = array();
 $databaseNames = array();
-//$databaseNames = array("ojs", "master", "montreal", "heidelberg");
 
 /*
 * GET DATA
@@ -72,46 +72,105 @@ if(isset($argv[1])){
 	* OUTPUT
 	*/
 
-	// remove double entries
+	// remove double entries and sort names alphabetically
 	$pluginNames = array_unique($pluginNames);
+	sort($pluginNames);
+	
+//	writeTable($pluginNames, $databaseNames, $plugins);
+	writeReverseTable($pluginNames, $databaseNames, $plugins);
 
+	
+}
+else{
+	echo('Please enter root password for this database.');
+}
+
+function writeTable($pluginNames, $databaseNames, $plugins){
 	// output in table
-	$outputString = "<table><tr><th></th>";
+	$outputString = '<table><tr><th></th>';
 
 	// write plugin names 
 	foreach($pluginNames as $pluginName){
-		$outputString .= "<th>".$pluginName."</th>";
+		$outputString .= '<th>'.$pluginName.'</th>';
 	}
-	$outputString .= "</tr>";
+	$outputString .= '</tr>';
 
 	foreach($databaseNames as $database){
 		
 		// write database name
-		$outputString .= "<tr><th>".$database."</th>";
+		$outputString .= '<tr><th>'.$database.'</th>';
 		
 		foreach($pluginNames as $pluginName){
 			
 			// write plugin settings
 			if(isset($plugins[$database][$pluginName])){
-				$outputString .= "<td>".$plugins[$database][$pluginName]."</td>";
+				$outputString .= '<td><a href="" title="'.$database.'/'.$pluginName.'">'.$plugins[$database][$pluginName].'</td>';
 			}else{
-				$outputString .= "<td></td>";
+				$outputString .= '<td></td>';
 			}
 		
 		}
-		$outputString .= "</tr>";
+		$outputString .= '</tr>';
 	}
 
-	$outputString .= "</table>";
+	$outputString .= '</table>';
 
 	// write to file
-	$file = fopen("plugin-usage.html", "w");
+	$file = fopen('plugin-usage.html', 'w');
 	fwrite($file, $outputString);
 
 }
-else{
-	echo('Please enter root password for this database.');
+
+
+
+function writeReverseTable($pluginNames, $databaseNames, $plugins){
+	// output in table
+	$outputString = '<table><tr><th></th>';
+
+	// write plugin names 
+	foreach($databaseNames as $database){
+		$outputString .= '<th>'.$database.'</th>';
+	}
+	$outputString .= '</tr>';
+
+	foreach($pluginNames as $pluginName){
+		
+		// write database name
+		$outputString .= '<tr><th>'.$pluginName.'</th>';
+		
+		foreach($databaseNames as $database){
+			
+			// write plugin settings
+			if(isset($plugins[$database][$pluginName])){
+				
+				$setting = $plugins[$database][$pluginName]; 
+				//	$outputString .= '<td><a href="" title="'.$database.'/'.$pluginName.'">'.$plugins[$database][$pluginName].'</td>';
+				
+				if($setting == 1){
+					
+					$outputString .= '<td>'.$pluginName.' enabled </td>';
+					
+				}else{
+					$outputString .= '<td>'.$pluginName.' installed </td>';
+				}
+		
+			}else{
+				$outputString .= '<td></td>';
+			}
+		
+		}
+		$outputString .= '</tr>';
+	}
+
+	$outputString .= '</table>';
+
+	// write to file
+	$file = fopen('plugin-usage.html', 'w');
+	fwrite($file, $outputString);
+
 }
+
+
 ?>
 
 
