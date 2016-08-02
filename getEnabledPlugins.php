@@ -3,9 +3,9 @@
 /**
 * getEnabledPlugins.php
 * get the enabled plugins from all our OJS users right out of the database
-* @argv password string
-* @version 1.1
-* @date 2016-08-01
+* 
+* @version 1.2
+* @date 2016-08-02
 * @author Svantje Lilienthal, Center for Digital Systems
 */
 
@@ -13,79 +13,110 @@
 * VARIABLES
 */ 
 
-// variables for the database connection
+// default variables for the database connection
 $host = 'localhost';
 $username = 'root';
 $password = '';
 
-// variables to be filles with data
+// output file
+$outputFile = 'plugin-usage.html';
+
+// variables to be filled with data
 $pluginNames = array();
 $plugins = array();
 $databaseNames = array();
 
 /*
 * GET DATA
+* get all folders, get credentials from config and ask database to get plugin settings
 */
 
-if(isset($argv[1])){
-	
-	$password = $argv[1];
+// get all subfolders of next higher directory
+$dir = realpath(__DIR__ . '/..');
+$files = scandir($dir);
 
-	// connect with database
-	$db = new PDO("mysql:host=$host", $username, $password);
+// go trough every folder = installation 
+foreach($files as $file){
+	
+	if(is_dir($dir.'/'.$file)){
 		
-	// get names of databases and store them in an array
-	// sql query to get plugin settings
-	$sqlDB = 'SHOW DATABASES';
-	foreach($db->query($sqlDB) as $key=>$row){
+		echo('Folder: '.$file.'<br>');
 		
-		$database = $row['Database'];
-		
-		// connect with each database
-		$db = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-		
-		// sql query 
-		$sql = 'SELECT ps.plugin_name, ps.setting_value FROM plugin_settings ps JOIN versions v ON (ps.plugin_name = CONCAT(v.product,"plugin") AND ps.setting_name = "enabled")'; //AND ps.setting_value = "1"
-		$result = $db->prepare($sql);
-		$result->execute();
-		
-		// store databaseNames in array
-		if(($result->rowCount())!=0){
-			echo($database.'<br>');
-			array_push($databaseNames, $row['Database']);	
-		}
-		
-		// handle result of query
-		foreach($result as $key=>$row){
+		if(file_exists($dir.'/'.$file.'/config.inc.php')){
 			
-			// store plugin names in array
-			array_push($pluginNames, $row['plugin_name']);
-			
-			// store plugin settings in associative array
-			$plugins[$database][$row['plugin_name']] = $row['setting_value'];
+			$config = parse_ini_file($dir.'/'.$file.'/config.inc.php');
 		
+			// read credentials from config
+			$password = $config['password'];
+			$database = $config['name'];
+			$username = $config['username'];
+			$password = $config['password'];
+			
+			// connect with database of this installation
+			$db = new PDO("mysql:host=$host;dbname=$database", $username, $password);
+			
+			// sql query 
+			$sql = 'SELECT ps.plugin_name, ps.setting_value, v.product FROM plugin_settings ps JOIN versions v ON (ps.plugin_name = CONCAT(v.product,"plugin") AND ps.setting_name = "enabled")'; //AND ps.setting_value = "1"
+			$result = $db->prepare($sql);
+			$result->execute();
+			
+			// store databaseNames in array
+			array_push($databaseNames, $database);	
+			
+			// handle result of query
+			foreach($result as $key=>$row){
+							
+				$pluginPath = $dir.'/'.$file.'/plugins/generic/'.$row['product'];
+				
+				// check if plugin folder exists
+				if(is_dir($pluginPath)){
+	
+					// store plugin names in array
+					array_push($pluginNames, $row['plugin_name']);
+					
+					// store plugin settings in associative array
+					$plugins[$database][$row['plugin_name']] = $row['setting_value'];
+					
+				}
+				
+			
+			}
+			
 		}
 		
 	}
+	
+}
 
-	/*
-	* OUTPUT
-	*/
+/*
+* OUTPUT
+*/
 
+// makeTable($pluginNames, $databaseNames, $plugins, $outputFile);
+$outputString = makeReverseTable($pluginNames, $databaseNames, $plugins, $outputFile);
+
+// write to file
+$file = fopen($outputFile, 'w');
+fwrite($file, $outputString);
+
+/*
+* FUNCTIONS
+*/
+
+/**
+* function creates a html table  
+* 
+* $pluginName string
+* $$databaseNames array
+* $plugins array
+* @returns string
+*/
+function makeTable($pluginNames, $databaseNames, $plugins, $outputFile){
+	
 	// remove double entries and sort names alphabetically
 	$pluginNames = array_unique($pluginNames);
 	sort($pluginNames);
 	
-//	writeTable($pluginNames, $databaseNames, $plugins);
-	writeReverseTable($pluginNames, $databaseNames, $plugins);
-
-	
-}
-else{
-	echo('Please enter root password for this database.');
-}
-
-function writeTable($pluginNames, $databaseNames, $plugins){
 	// output in table
 	$outputString = '<table><tr><th></th>';
 
@@ -114,16 +145,25 @@ function writeTable($pluginNames, $databaseNames, $plugins){
 	}
 
 	$outputString .= '</table>';
-
-	// write to file
-	$file = fopen('plugin-usage.html', 'w');
-	fwrite($file, $outputString);
+	
+	return $outputString;
 
 }
 
 
-
-function writeReverseTable($pluginNames, $databaseNames, $plugins){
+/**
+* function creates a html table   
+* 
+* $pluginName string
+* $$databaseNames array
+* $plugins array
+*/
+function makeReverseTable($pluginNames, $databaseNames, $plugins, $outputFile){
+	
+	// remove double entries and sort names alphabetically
+	$pluginNames = array_unique($pluginNames);
+	sort($pluginNames);
+	
 	// output in table
 	$outputString = '<table><tr><th></th>';
 
@@ -164,12 +204,39 @@ function writeReverseTable($pluginNames, $databaseNames, $plugins){
 
 	$outputString .= '</table>';
 
-	// write to file
-	$file = fopen('plugin-usage.html', 'w');
-	fwrite($file, $outputString);
+	return $outputString;
 
 }
 
+
+/**
+* function that reads all databaseNames
+* 
+* $host string
+* $username string
+* $password string
+* @returns array 
+*/
+function getDatabases($host, $username, $password){
+	
+	$databases = Array();
+	
+	// connect with database
+	$db = new PDO("mysql:host=$host", $username, $password);
+		
+	// get names of databases and store them in an array
+	// sql query to get plugin settings
+	$sqlDB = 'SHOW DATABASES';
+	foreach($db->query($sqlDB) as $key=>$row){
+		
+		array_push($databases, $row['Database']);
+		
+	}
+	
+	return $databases;
+	
+}
+	
 
 ?>
 
