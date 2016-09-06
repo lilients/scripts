@@ -4,8 +4,9 @@
 * getEnabledPlugins.php
 * get the enabled plugins from all our OJS users right out of the database
 * 
-* @version 1.2
-* @date 2016-08-02
+* @argv path to directory where ojs installations are located
+* @version 1.3
+* @date 2016-09-06
 * @author Svantje Lilienthal, Center for Digital Systems
 */
 
@@ -31,73 +32,83 @@ $databaseNames = array();
 * get all folders, get credentials from config and ask database to get plugin settings
 */
 
-// get all subfolders of next higher directory
-$dir = realpath(__DIR__ . '/..');
-$files = scandir($dir);
+if(isset($argv[1])){
+	
+	// get path to directory from user
+	$dir = $argv[1];
+	
+	// get all subfolders of the directory 
+	$files = scandir($dir);
 
-// go trough every folder = installation 
-foreach($files as $file){
-	
-	if(is_dir($dir.'/'.$file)){
+	// go trough every folder = installation 
+	foreach($files as $file){
 		
-		echo('Folder: '.$file.'<br>');
-		
-		if(file_exists($dir.'/'.$file.'/config.inc.php')){
+		if(is_dir($dir.'/'.$file)){
 			
-			$config = parse_ini_file($dir.'/'.$file.'/config.inc.php');
-		
-			// read credentials from config
-			$password = $config['password'];
-			$database = $config['name'];
-			$username = $config['username'];
-			$password = $config['password'];
+			echo('Folder: '.$file.'<br>');
 			
-			// connect with database of this installation
-			$db = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-			
-			// sql query 
-			$sql = 'SELECT ps.plugin_name, ps.setting_value, v.product FROM plugin_settings ps JOIN versions v ON (ps.plugin_name = CONCAT(v.product,"plugin") AND ps.setting_name = "enabled")'; //AND ps.setting_value = "1"
-			$result = $db->prepare($sql);
-			$result->execute();
-			
-			// store databaseNames in array
-			array_push($databaseNames, $database);	
-			
-			// handle result of query
-			foreach($result as $key=>$row){
-							
-				$pluginPath = $dir.'/'.$file.'/plugins/generic/'.$row['product'];
+			if(file_exists($dir.'/'.$file.'/config.inc.php')){
 				
-				// check if plugin folder exists
-				if(is_dir($pluginPath)){
-	
-					// store plugin names in array
-					array_push($pluginNames, $row['plugin_name']);
+				$config = parse_ini_file($dir.'/'.$file.'/config.inc.php');
+			
+				// read credentials from config
+				$password = $config['password'];
+				$database = $config['name'];
+				$username = $config['username'];
+				$password = $config['password'];
+				
+				// connect with database of this installation
+				$db = new PDO("mysql:host=$host;dbname=$database", $username, $password);
+				
+				// sql query 
+				$sql = 'SELECT ps.plugin_name, ps.setting_value, v.product FROM plugin_settings ps JOIN versions v ON (ps.plugin_name = CONCAT(v.product,"plugin") AND ps.setting_name = "enabled")'; //AND ps.setting_value = "1"
+				$result = $db->prepare($sql);
+				$result->execute();
+				
+				// store databaseNames in array
+				array_push($databaseNames, $database);	
+				
+				// handle result of query
+				foreach($result as $key=>$row){
+								
+					$pluginPath = $dir.'/'.$file.'/plugins/generic/'.$row['product'];
 					
-					// store plugin settings in associative array
-					$plugins[$database][$row['plugin_name']] = $row['setting_value'];
-					
+					// check if plugin folder exists
+					if(is_dir($pluginPath)){
+		
+						// store plugin names in array
+						array_push($pluginNames, $row['plugin_name']);
+						
+						// store plugin settings in associative array
+						$plugins[$database][$row['plugin_name']] = $row['setting_value'];
+						
+					}
+				
 				}
 				
-			
 			}
 			
 		}
 		
 	}
 	
+	/*
+	* OUTPUT
+	*/
+
+	// makeTable($pluginNames, $databaseNames, $plugins, $outputFile);
+	$outputString = makeReverseTable($pluginNames, $databaseNames, $plugins, $outputFile);
+
+	// write to file
+	$file = fopen($outputFile, 'w');
+	fwrite($file, $outputString);
+	
+}else {
+	
+	echo("Please enter the folder path, where the ojs installations are located as an argument.");
+	
 }
 
-/*
-* OUTPUT
-*/
-
-// makeTable($pluginNames, $databaseNames, $plugins, $outputFile);
-$outputString = makeReverseTable($pluginNames, $databaseNames, $plugins, $outputFile);
-
-// write to file
-$file = fopen($outputFile, 'w');
-fwrite($file, $outputString);
 
 /*
 * FUNCTIONS
