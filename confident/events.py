@@ -22,7 +22,7 @@ def get_dublin_core_data(label):
 
 # variables
 dcMetadata = ['identifier', 'title', 'description', 'source'] # metadata that is stored with dublin core tags
-spanMetadata = ['startDate', 'endDate', 'locality', 'eventType', 'summary'] # metadata that is stored in spans
+spanMetadata = ['startDate', 'endDate', 'locality'] # metadata that is stored in spans
 tdMetadata = ['Submission Deadline', 'Notification Due', 'Final Version Due'] # metadata that is stored in td
 fieldnames = dcMetadata + spanMetadata + tdMetadata + ['Categories', 'Call For Papers', 'Related Resources'] # combination of the metadata for the csv table heading
 
@@ -64,14 +64,16 @@ with open(filename, 'w') as csvfile:
             # get metadata and its labels from spans
             for span in soup.find('h2').find_all('span'):
                 if span.attrs.get('content') and span.attrs.get('property'):
-                    result[span.attrs.get('property').replace('v:', '')] = span.attrs.get('content').encode('utf-8')
+                    thisMetadata = span.attrs.get('property').replace('v:', '')
+                    if thisMetadata in spanMetadata:
+                        result[thisMetadata] = span.attrs.get('content').encode('utf-8')
 
             # get metadata from h5: categories
             if soup.find('h5'):
                 categories = ''
                 for category in soup.find('h5').find_all('a'):
                     if category.text != 'Categories':
-                        categories += '"'+category.text+'" '
+                        categories += '"'+category.text.encode('utf-8')+'" '
                 result['Categories'] = categories
 
             # get metadata from td: dates
@@ -80,8 +82,8 @@ with open(filename, 'w') as csvfile:
 
             # get Call For Papers and Related Resources
             div = soup.findAll('div', {'class': 'cfp'})
-            result['Call For Papers'] = div[0].text.encode('utf-8') # Call For Papers
-            result['Related Resources'] = div[1].encode('utf-8') # Related Resources
+            if div[0]: result['Call For Papers'] = div[0].text.encode('utf-8') # Call For Papers
+            if len(div) > 1: result['Related Resources'] = div[1].encode('utf-8') # Related Resources
 
             # write this event to the file
             file.writerow(result)
