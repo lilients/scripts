@@ -36,7 +36,15 @@ file = csv.DictWriter(csvfile, fieldnames = fieldnames)
 file.writeheader()
 
 # get range from user input
-for i in range(int(sys.argv[1]), int(sys.argv[2]), -1):
+startId = sys.argv[1]
+stopId = sys.argv[2]
+
+# go forward or backward
+if startId <= stopId: step = +1
+else: step = -1
+
+# get all ids
+for i in range(int(startId), int(stopId), step):
 
     # store the data of this event in a dictionary
     result = {}
