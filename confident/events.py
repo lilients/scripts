@@ -24,15 +24,19 @@ def get_dublin_core_data(label):
 dcMetadata = ['identifier', 'title', 'description', 'source'] # metadata that is stored with dublin core tags
 spanMetadata = ['startDate', 'endDate', 'locality', 'eventType', 'summary'] # metadata that is stored in spans
 tdMetadata = ['Submission Deadline', 'Notification Due', 'Final Version Due'] # metadata that is stored in td
+h5Metadata = ['Categories'] # metadata in h5
+fieldnames = dcMetadata + spanMetadata + tdMetadata + h5Metadata # combination of the metadata for the csv table heading
 
-# prepare output file
+# get filename from user input
 if len(sys.argv) == 4: filename = sys.argv[3]
 else: filename ='events.csv'
+
+# prepare output file
 csvfile = open(filename, 'w')
-file = csv.DictWriter(csvfile, fieldnames = dcMetadata + spanMetadata + tdMetadata)
+file = csv.DictWriter(csvfile, fieldnames = fieldnames)
 file.writeheader()
 
-# get ids from command line
+# get range from user input
 for i in range(int(sys.argv[1]), int(sys.argv[2])):
 
     # store the data of this event in a dictionary
@@ -54,6 +58,14 @@ for i in range(int(sys.argv[1]), int(sys.argv[2])):
         for span in soup.find('h2').find_all('span'):
             if span.attrs.get('content') and span.attrs.get('property'):
                 result[span.attrs.get('property').replace('v:', '')] = span.attrs.get('content').encode('utf-8')
+
+        # get metadata from h5
+        if soup.find('h5'):
+            categories = ''
+            for category in soup.find('h5').find_all('a'):
+                if category.text != 'Categories':
+                    categories += '"'+category.text+'" '
+            result['Categories'] = categories
 
         # get metadata from td
         for metadata in tdMetadata:
