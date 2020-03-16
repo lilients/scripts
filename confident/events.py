@@ -24,8 +24,7 @@ def get_dublin_core_data(label):
 dcMetadata = ['identifier', 'title', 'description', 'source'] # metadata that is stored with dublin core tags
 spanMetadata = ['startDate', 'endDate', 'locality', 'eventType', 'summary'] # metadata that is stored in spans
 tdMetadata = ['Submission Deadline', 'Notification Due', 'Final Version Due'] # metadata that is stored in td
-h5Metadata = ['Categories'] # metadata in h5
-fieldnames = dcMetadata + spanMetadata + tdMetadata + h5Metadata # combination of the metadata for the csv table heading
+fieldnames = dcMetadata + spanMetadata + tdMetadata + ['Categories', 'Call For Papers', 'Related Resources'] # combination of the metadata for the csv table heading
 
 # get filename from user input
 if len(sys.argv) == 4: filename = sys.argv[3]
@@ -37,7 +36,7 @@ file = csv.DictWriter(csvfile, fieldnames = fieldnames)
 file.writeheader()
 
 # get range from user input
-for i in range(int(sys.argv[1]), int(sys.argv[2])):
+for i in range(int(sys.argv[1]), int(sys.argv[2]), -1):
 
     # store the data of this event in a dictionary
     result = {}
@@ -59,7 +58,7 @@ for i in range(int(sys.argv[1]), int(sys.argv[2])):
             if span.attrs.get('content') and span.attrs.get('property'):
                 result[span.attrs.get('property').replace('v:', '')] = span.attrs.get('content').encode('utf-8')
 
-        # get metadata from h5
+        # get metadata from h5: categories
         if soup.find('h5'):
             categories = ''
             for category in soup.find('h5').find_all('a'):
@@ -67,9 +66,14 @@ for i in range(int(sys.argv[1]), int(sys.argv[2])):
                     categories += '"'+category.text+'" '
             result['Categories'] = categories
 
-        # get metadata from td
+        # get metadata from td: dates
         for metadata in tdMetadata:
             result[metadata] = get_td_data(metadata)
+
+        # get Call For Papers and Related Resources
+        div = soup.findAll('div', {'class': 'cfp'})
+        result['Call For Papers'] = div[0].text.encode('utf-8') # Call For Papers
+        result['Related Resources'] = div[1].encode('utf-8') # Related Resources
 
         # write this event to the file
         file.writerow(result)
