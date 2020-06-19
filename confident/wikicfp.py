@@ -1,27 +1,14 @@
 # script to read event metadata from http://wikicfp.com
-# use: python events.py [startId] [stopId] [filename]
+# use: python3 wikicfp.py [startId] [stopId] [threads]
 # @param startId
 # @param stopId
-# @param filename
-# example: python events.py 2000 2999 output-2000-2999.csv
-
-#
-# This script has been modified by Philipp Holz
-# The script is now capable of concurrency usage
-# This should impreove the performance
-#
-# The script was also ported to work with latest python version
-#
-# another parameter was added, determines how much threads the script is allowed to use
-# @param threads
-
+# @param threads - number of threads the script should create to improve performance
+# example: python3 wikicfp.py 2000 2999 10
 
 import sys
-# with python 3 you need this import instead of just urllib
 import urllib.request
 from bs4 import BeautifulSoup
 import csv
-# needed for threading
 import threading
 import logging
 
@@ -29,12 +16,10 @@ import logging
 startId = sys.argv[1]
 stopId = sys.argv[2]
 
-# get filename from user input
-if len(sys.argv) == 4: filename = sys.argv[3]
-else: filename ='events'
+filename ='wikicfp-events'
 
 # if parameter thread is given take it otherwise use 1 threads as default
-if len(sys.argv) == 5: threads = sys.argv[4]
+if len(sys.argv) == 4: threads = sys.argv[3]
 else: threads = 1
 
 # do not use more than 10 threads at all
@@ -79,8 +64,8 @@ def threadedFunction(filename, startId, stopId):
 
             # get html via url
             url = "http://wikicfp.com/cfp/servlet/event.showcfp?eventid="+str(i)
-            # with python 3 you need to change with call use request
             response = urllib.request.urlopen(url)
+
             html = response.read()
             soup = BeautifulSoup(html, 'html.parser', from_encoding="windows-1259")
 
